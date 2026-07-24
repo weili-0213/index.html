@@ -1,0 +1,48 @@
+baccarat-analyzer/
+│
+├── <!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>Baccarat Analyzer</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+body{
+    margin:0;
+    background:#0B4D2A;
+    color:white;
+    font-family:Arial;
+}
+
+<div id="app"></div>
+
+<script type="module" src="app.js"></script>
+
+</body>
+</html>
+├── style.css
+├── import Shoe from "./engine/shoe.js";
+
+const shoe = new Shoe();
+
+console.log(shoe);
+│
+├── engine/
+│   ├── shoe.js          // 牌靴
+│   ├── card.js          // 卡牌
+│   ├── burn.js          // 燒牌
+│   ├── rules.js         // 百家樂規則
+│   ├── recorder.js      // 每局紀錄
+│   ├── probability.js   // 機率
+│   ├── ev.js            // EV
+│   ├── kelly.js         // Kelly
+│   └── simulator.js     // 模擬器
+│
+├── ui/
+│   ├── table.js
+│   ├── history.js
+│   └── chart.js
+│
+└── README.md
