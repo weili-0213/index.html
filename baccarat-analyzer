@@ -2,47 +2,1053 @@ baccarat-analyzer/
 │
 ├── <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
+
     <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
     <title>Baccarat Analyzer</title>
 
     <link rel="stylesheet" href="style.css">
+
 </head>
 
-body{
-    margin:0;
-    background:#0B4D2A;
-    color:white;
-    font-family:Arial;
-}
+<body>
 
-<div id="app"></div>
+<header>
 
-<script type="module" src="app.js"></script>
+    <h1>🎰 Baccarat Analyzer</h1>
+
+    <p>8副牌 百家樂分析系統</p>
+
+</header>
+
+<div class="container">
+
+    <!-- 左側 -->
+
+    <aside>
+
+        <section class="panel">
+
+            <h2>新牌靴</h2>
+
+            <button id="newShoeBtn">
+                建立新牌靴
+            </button>
+
+            <br><br>
+
+            <label>
+
+                第一張燒牌
+
+            </label>
+
+            <select id="burnCard">
+
+                <option>A</option>
+
+                <option>2</option>
+
+                <option>3</option>
+
+                <option>4</option>
+
+                <option>5</option>
+
+                <option>6</option>
+
+                <option>7</option>
+
+                <option>8</option>
+
+                <option>9</option>
+
+                <option>10</option>
+
+                <option>J</option>
+
+                <option>Q</option>
+
+                <option>K</option>
+
+            </select>
+
+            <button id="burnBtn">
+
+                開始牌靴
+
+            </button>
+
+        </section>
+
+        <section class="panel">
+
+            <h2>剩餘牌數</h2>
+
+            <div id="shoeInfo"></div>
+
+        </section>
+
+    </aside>
+
+    <!-- 中間 -->
+
+    <main>
+
+        <section class="panel">
+
+            <h2>輸入本局</h2>
+
+            <div class="inputArea">
+
+                <div>
+
+                    <h3>Player</h3>
+
+                    <input id="playerCards"
+                           placeholder="例如：8 5 3">
+
+                </div>
+
+                <div>
+
+                    <h3>Banker</h3>
+
+                    <input id="bankerCards"
+                           placeholder="例如：9 7 K">
+
+                </div>
+
+            </div>
+
+            <br>
+
+            <button id="addRoundBtn">
+
+                加入本局
+
+            </button>
+
+        </section>
+
+        <section class="panel">
+
+            <h2>分析結果</h2>
+
+            <table id="resultTable">
+
+                <thead>
+
+                <tr>
+
+                    <th>投注</th>
+
+                    <th>機率</th>
+
+                    <th>EV</th>
+
+                </tr>
+
+                </thead>
+
+                <tbody>
+
+                </tbody>
+
+            </table>
+
+        </section>
+
+    </main>
+
+    <!-- 右側 -->
+
+    <aside>
+
+        <section class="panel">
+
+            <h2>下注建議</h2>
+
+            <div id="recommendation">
+
+                尚未分析
+
+            </div>
+
+        </section>
+
+        <section class="panel">
+
+            <h2>歷史紀錄</h2>
+
+            <div id="history"></div>
+
+        </section>
+
+    </aside>
+
+</div>
+
+<script type="module"
+        src="app.js"></script>
 
 </body>
+
 </html>
-├── style.css
+├── *{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+
+    background:#0B5D39;
+
+    color:white;
+
+    font-family:
+        "Segoe UI",
+        Arial,
+        sans-serif;
+}
+
+header{
+
+    background:#083E28;
+
+    text-align:center;
+
+    padding:20px;
+
+    border-bottom:3px solid gold;
+}
+
+header h1{
+
+    font-size:34px;
+
+    color:gold;
+}
+
+header p{
+
+    margin-top:10px;
+
+    color:#ddd;
+}
+
+.container{
+
+    display:grid;
+
+    grid-template-columns:
+
+        300px
+        1fr
+        300px;
+
+    gap:20px;
+
+    padding:20px;
+}
+
+.panel{
+
+    background:#146B43;
+
+    border-radius:10px;
+
+    padding:20px;
+
+    margin-bottom:20px;
+
+    box-shadow:
+
+    0 0 15px rgba(0,0,0,.35);
+}
+
+.panel h2{
+
+    margin-bottom:15px;
+
+    color:gold;
+
+    border-bottom:1px solid rgba(255,255,255,.25);
+
+    padding-bottom:10px;
+}
+
+button{
+
+    width:100%;
+
+    padding:12px;
+
+    border:none;
+
+    border-radius:8px;
+
+    cursor:pointer;
+
+    background:#FFD700;
+
+    color:#222;
+
+    font-size:16px;
+
+    font-weight:bold;
+
+    transition:.2s;
+}
+
+button:hover{
+
+    background:#ffe95a;
+}
+
+button:active{
+
+    transform:scale(.98);
+}
+
+input{
+
+    width:100%;
+
+    padding:12px;
+
+    margin-top:8px;
+
+    border-radius:6px;
+
+    border:none;
+
+    outline:none;
+
+    font-size:16px;
+}
+
+select{
+
+    width:100%;
+
+    padding:10px;
+
+    margin-top:10px;
+
+    margin-bottom:15px;
+
+    font-size:16px;
+}
+
+.inputArea{
+
+    display:grid;
+
+    grid-template-columns:
+
+    1fr 1fr;
+
+    gap:20px;
+}
+
+table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    margin-top:10px;
+}
+
+table th{
+
+    background:#093F28;
+
+    color:gold;
+
+    padding:12px;
+}
+
+table td{
+
+    padding:10px;
+
+    text-align:center;
+
+    border-bottom:
+
+    1px solid rgba(255,255,255,.15);
+}
+
+table tr:hover{
+
+    background:
+
+    rgba(255,255,255,.08);
+}
+
+#shoeInfo{
+
+    display:grid;
+
+    grid-template-columns:
+
+    repeat(2,1fr);
+
+    gap:8px;
+}
+
+.cardCount{
+
+    background:#0A472D;
+
+    padding:8px;
+
+    border-radius:6px;
+
+    display:flex;
+
+    justify-content:space-between;
+}
+
+#recommendation{
+
+    font-size:20px;
+
+    text-align:center;
+
+    padding:20px;
+
+    color:gold;
+}
+
+#history{
+
+    max-height:500px;
+
+    overflow:auto;
+}
+
+.historyItem{
+
+    background:#0A472D;
+
+    margin-bottom:10px;
+
+    padding:10px;
+
+    border-radius:6px;
+}
+
+.good{
+
+    color:#6CFF7A;
+
+    font-weight:bold;
+}
+
+.bad{
+
+    color:#FF6868;
+
+    font-weight:bold;
+}
+
+.warning{
+
+    color:#FFD34D;
+
+    font-weight:bold;
+}
+
+@media (max-width:1100px){
+
+.container{
+
+grid-template-columns:
+
+1fr;
+
+}
+
+}
 ├── import Shoe from "./engine/shoe.js";
 
-const shoe = new Shoe();
 
-console.log(shoe);
+/*
+=================================
+  Baccarat Analyzer 主程式
+=================================
+*/
+
+
+let shoe = null;
+
+
+/*
+建立新牌靴
+*/
+
+function createNewShoe(){
+
+    shoe = new Shoe(8);
+
+    updateShoeDisplay();
+
+    console.log(
+        "New shoe created",
+        shoe.export()
+    );
+}
+
+
+/*
+更新剩餘牌顯示
+*/
+
+function updateShoeDisplay(){
+
+    const box =
+        document.getElementById(
+            "shoeInfo"
+        );
+
+
+    if(!shoe){
+
+        box.innerHTML =
+        "尚未建立牌靴";
+
+        return;
+    }
+
+
+    let html = "";
+
+
+    const cards =
+    [
+        "A",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "J",
+        "Q",
+        "K"
+    ];
+
+
+    cards.forEach(card=>{
+
+
+        html += `
+
+        <div class="cardCount">
+
+            <span>${card}</span>
+
+            <span>
+            ${shoe.remaining(card)}
+            </span>
+
+        </div>
+
+        `;
+
+    });
+
+
+    html += `
+
+    <br>
+
+    <div>
+
+    剩餘：
+
+    ${shoe.totalCards()}
+
+    張
+
+    </div>
+
+    `;
+
+
+    box.innerHTML = html;
+
+}
+
+
+
+/*
+燒牌
+
+之後會連接 burn.js
+
+*/
+
+function startBurn(){
+
+    if(!shoe){
+
+        alert(
+        "請先建立牌靴"
+        );
+
+        return;
+    }
+
+
+    const card =
+    document.getElementById(
+        "burnCard"
+    ).value;
+
+
+    console.log(
+        "Burn card:",
+        card
+    );
+
+
+    /*
+    下一階段加入：
+
+    BurnEngine.burn(
+        shoe,
+        card
+    )
+
+    */
+
+
+}
+
+
+
+/*
+加入牌局
+
+之後連接：
+
+recorder.js
+rules.js
+
+*/
+
+function addRound(){
+
+    if(!shoe){
+
+        alert(
+        "尚未建立牌靴"
+        );
+
+        return;
+    }
+
+
+    const player =
+    document.getElementById(
+        "playerCards"
+    ).value;
+
+
+    const banker =
+    document.getElementById(
+        "bankerCards"
+    ).value;
+
+
+
+    console.log(
+        "Player:",
+        player
+    );
+
+
+    console.log(
+        "Banker:",
+        banker
+    );
+
+
+    /*
+    
+    下一階段：
+
+    1.解析牌
+
+    2.扣牌
+
+    3.紀錄結果
+
+    4.重新分析
+
+    */
+
+}
+
+
+
+/*
+初始化事件
+*/
+
+function init(){
+
+
+    document
+    .getElementById(
+        "newShoeBtn"
+    )
+    .addEventListener(
+        "click",
+        createNewShoe
+    );
+
+
+    document
+    .getElementById(
+        "burnBtn"
+    )
+    .addEventListener(
+        "click",
+        startBurn
+    );
+
+
+    document
+    .getElementById(
+        "addRoundBtn"
+    )
+    .addEventListener(
+        "click",
+        addRound
+    );
+
+
+    console.log(
+        "Baccarat Analyzer Loaded"
+    );
+
+}
+
+
+init();
 │
 ├── engine/
-│   ├── shoe.js          // 牌靴
-│   ├── card.js          // 卡牌
-│   ├── burn.js          // 燒牌
-│   ├── rules.js         // 百家樂規則
-│   ├── recorder.js      // 每局紀錄
-│   ├── probability.js   // 機率
-│   ├── ev.js            // EV
-│   ├── kelly.js         // Kelly
-│   └── simulator.js     // 模擬器
+│   ├── /*
+=================================
+ Baccarat Analyzer
+ Shoe Engine
+
+ 負責：
+ - 牌靴管理
+ - 剩餘牌數
+ - 扣牌
+ - 還原
+=================================
+*/
+
+
+export default class Shoe {
+
+
+    constructor(decks = 8){
+
+        this.decks = decks;
+
+        this.reset();
+
+    }
+
+
+
+    /*
+    建立新牌靴
+    */
+
+    reset(){
+
+
+        const cards = [
+
+            "A",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "J",
+            "Q",
+            "K"
+
+        ];
+
+
+        this.cards = {};
+
+
+        cards.forEach(card=>{
+
+
+            /*
+            每副牌每個點數：
+
+            A~9 = 4張
+            10/J/Q/K = 4張
+
+            8副牌：
+
+            4 × 8 = 32
+
+            */
+
+            this.cards[card] =
+                4 * this.decks;
+
+
+        });
+
+
+        this.total =
+            52 * this.decks;
+
+
+    }
+
+
+
+    /*
+    查詢某牌剩餘數量
+
+    例如：
+
+    shoe.remaining("A")
+
+    */
+
+    remaining(card){
+
+
+        if(
+            this.cards[card] === undefined
+        ){
+
+            return 0;
+
+        }
+
+
+        return this.cards[card];
+
+    }
+
+
+
+    /*
+    扣掉一張牌
+
+    */
+
+    remove(card){
+
+
+        if(
+            !this.cards[card]
+        ){
+
+            console.warn(
+                "No card left:",
+                card
+            );
+
+            return false;
+
+        }
+
+
+
+        this.cards[card]--;
+
+        this.total--;
+
+
+        return true;
+
+    }
+
+
+
+
+    /*
+    加回一張牌
+
+    */
+
+    restore(card){
+
+
+        if(
+            this.cards[card] === undefined
+        ){
+
+            return false;
+
+        }
+
+
+        this.cards[card]++;
+
+        this.total++;
+
+
+        return true;
+
+    }
+
+
+
+
+
+    /*
+    目前剩餘總牌數
+
+    */
+
+    totalCards(){
+
+        return this.total;
+
+    }
+
+
+
+
+
+    /*
+    複製牌靴
+
+    給機率模擬使用
+
+    */
+
+    clone(){
+
+
+        const copy =
+            new Shoe(
+                this.decks
+            );
+
+
+        copy.cards =
+            {
+                ...this.cards
+            };
+
+
+        copy.total =
+            this.total;
+
+
+        return copy;
+
+    }
+
+
+
+
+
+    /*
+    匯出目前牌況
+
+    */
+
+    export(){
+
+
+        return {
+
+            decks:this.decks,
+
+            total:this.total,
+
+            cards:
+            {
+                ...this.cards
+            }
+
+        };
+
+
+    }
+
+
+
+
+    /*
+    匯入牌況
+
+    未來存檔使用
+
+    */
+
+    import(data){
+
+
+        this.decks =
+            data.decks;
+
+
+        this.total =
+            data.total;
+
+
+        this.cards =
+            {
+                ...data.cards
+            };
+
+
+    }
+
+
+
+}
+│   ├── burn.js
+│   ├── rules.js
+│   ├── recorder.js
+│   ├── probability.js
+│   ├── ev.js
+│   ├── kelly.js
+│   └── simulator.js
 │
 ├── ui/
-│   ├── table.js
-│   ├── history.js
-│   └── chart.js
+│   ├── input.js
+│   ├── statistics.js
+│   ├── roadmap.js
+│   └── recommendation.js
+│
+├── assets/
 │
 └── README.md
