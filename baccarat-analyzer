@@ -1,124 +1,291 @@
 baccarat-analyzer/
 │
 ├── index.html
-├── style.css
-├── app.js
+├── manifest.json
+├── service-worker.js
 ├── README.md
+│
+├── src/
+│
+├── app/
+│   ├── app.js
+│   ├── router.js
+│   ├── state.js
+│   └── events.js              # 新增：事件管理
+│
 │
 ├── engine/
 │   │
-│   ├── shoe.js
-│   │   # 牌靴核心
-│   │   # 8副牌初始化
-│   │   # 剩餘牌數
-│   │   # 扣牌/恢復
+│   ├── /**
+ * Baccarat Card Model
+ *
+ * 一張實體牌
+ *
+ * rank:
+ * A,2,3,4,5,6,7,8,9,10,J,Q,K
+ *
+ * suit:
+ * S,H,D,C
+ *
+ * deck:
+ * 第幾副牌 (1~8)
+ */
+
+
+export default class Card {
+
+
+    constructor(rank, suit, deck = 1) {
+
+
+        this.rank = rank;
+
+        this.suit = suit;
+
+        this.deck = deck;
+
+
+    }
+
+
+
+    /**
+     * 百家樂牌值
+     *
+     * A = 1
+     * 2-9 = face value
+     * 10,J,Q,K = 0
+     */
+    get baccaratValue(){
+
+
+        if(this.rank === "A"){
+            return 1;
+        }
+
+
+        if(
+            [
+                "10",
+                "J",
+                "Q",
+                "K"
+            ].includes(this.rank)
+        ){
+
+            return 0;
+
+        }
+
+
+        return Number(this.rank);
+
+
+    }
+
+
+
+    /**
+     * Pair 判定用
+     *
+     * 百家樂 Pair 看牌面
+     *
+     * 例如：
+     *
+     * 8♠
+     * 8♦
+     *
+     * 是 Pair
+     */
+    get pairValue(){
+
+
+        return this.rank;
+
+
+    }
+
+
+
+    /**
+     * 是否為圖片牌
+     */
+    get isFaceCard(){
+
+
+        return [
+            "10",
+            "J",
+            "Q",
+            "K"
+
+        ].includes(this.rank);
+
+
+    }
+
+
+
+    /**
+     * 唯一識別
+     *
+     * 例如：
+     *
+     * 3-S-2
+     *
+     * 第二副牌
+     * 黑桃3
+     */
+    get id(){
+
+
+        return `${this.deck}-${this.suit}-${this.rank}`;
+
+
+    }
+
+
+
+    /**
+     * 顯示
+     */
+    toString(){
+
+
+        return `${this.rank}${this.suit}`;
+
+
+    }
+
+
+
+    /**
+     * JSON儲存
+     *
+     * LocalStorage會用到
+     */
+    toJSON(){
+
+
+        return {
+
+            rank:this.rank,
+
+            suit:this.suit,
+
+            deck:this.deck
+
+        };
+
+
+    }
+
+
+
+    /**
+     * 從JSON恢復牌
+     */
+    static fromJSON(data){
+
+
+        return new Card(
+
+            data.rank,
+
+            data.suit,
+
+            data.deck
+
+        );
+
+
+    }
+
+
+
+}                # 單張牌
+│   ├── shoe.js                # 8副牌牌靴
+│   ├── burn.js                # 燒牌
+│   ├── draw.js                # 抽牌
+│   ├── hand.js                # 手牌計算
+│   ├── rules.js               # 百家樂規則
+│   ├── simulator.js           # 模擬一局
+│   ├── validator.js           # 新增：牌局合法檢查
+│   └── roundResult.js
+│
+│
+├── analysis/
 │   │
-│   ├── card.js
-│   │   # 牌的資料結構
-│   │   # 點數轉換
-│   │
-│   ├── burn.js
-│   │   # 第一張燒牌
-│   │   # 燒牌規則
-│   │
-│   ├── draw.js
-│   │   # 高速抽牌
-│   │   # 權重抽樣
-│   │
-│   ├── rules.js
-│   │   # 百家樂正式規則
-│   │   # Player補牌
-│   │   # Banker補牌
-│   │   # Natural
-│   │
-│   ├── simulator.js
-│   │   # 模擬完整一局
-│   │   # 產生RoundResult
-│   │
-│   ├── sidebets.js
-│   │   # Pair
-│   │   # Dragon Bonus
-│   │   # Super6
-│   │
-│   ├── probability.js
-│   │   # 機率引擎
-│   │   # Monte Carlo
-│   │   # Exact Calculation接口
-│   │
-│   ├── ev.js
-│   │   # Expected Value
-│   │
-│   ├── kelly.js
-│   │   # Kelly下注比例
-│   │
-│   └── analyzer.js
-│       # 統一分析入口
+│   ├── probability.js         # 勝率
+│   ├── montecarlo.js          # 模擬
+│   ├── exact.js               # 精確計算接口
+│   ├── sidebets.js            # Side Bet機率
+│   ├── ev.js                  # 期望值
+│   ├── kelly.js               # Kelly下注
+│   ├── bankroll.js            # 資金管理
+│   ├── ranking.js             # EV排序
+│   ├── confidence.js          # 新增：信心評分
+│   └── analyzer.js            # 總分析入口
 │
 │
 ├── config/
 │   │
-│   ├── game.js
-│   │   # 遊戲設定
-│   │   # 8副牌
-│   │
-│   ├── payouts.js
-│   │   # 所有賠率
-│   │
-│   └── rules.js
-│       # 不同賭場規則切換
+│   ├── payouts.js             # 賠率設定
+│   ├── rules.js               # 規則設定
+│   └── settings.js            # 使用者設定
 │
 │
 ├── data/
 │   │
-│   ├── history.js
-│   │   # 歷史牌局
-│   │
-│   └── storage.js
-│       # LocalStorage存檔
+│   ├── history.js             # 歷史牌局
+│   ├── storage.js             # LocalStorage
+│   ├── backup.js              # 匯出/匯入
+│   └── database.js            # 新增資料管理
 │
 │
-├── ui/
+├── workers/
 │   │
-│   ├── shoeView.js
-│   │   # 顯示剩餘牌
+│   └── montecarlo.worker.js
+│
+│
+├── components/
 │   │
-│   ├── inputView.js
-│   │   # 輸入牌局
+│   ├── CardInput.js           # 輸入牌
+│   ├── ShoeStatus.js          # 剩餘牌
+│   ├── BetTable.js            # 投注列表
+│   ├── EVCard.js              # EV顯示
+│   ├── Recommendation.js      # 推薦下注
+│   ├── Bankroll.js             # 本金管理
+│   ├── Chart.js
+│   └── Settings.js             # 新增設定頁
+│
+│
+├── styles/
 │   │
-│   ├── resultView.js
-│   │   # 顯示機率
-│   │
-│   ├── evView.js
-│   │   # 顯示EV
-│   │
-│   ├── recommendationView.js
-│   │   # 顯示下注建議
-│   │
-│   └── chartView.js
-│       # 圖表
+│   ├── main.css
+│   ├── mobile.css
+│   ├── dark.css
+│   └── components.css
 │
 │
 ├── utils/
 │   │
-│   ├── random.js
-│   │   # 隨機工具
-│   │
 │   ├── math.js
-│   │   # 數學工具
-│   │
-│   └── formatter.js
-│       # 格式化
+│   ├── formatter.js
+│   ├── random.js
+│   └── cache.js                # 新增計算快取
 │
 │
 ├── tests/
 │   │
+│   ├── card.test.js
 │   ├── shoe.test.js
 │   ├── rules.test.js
 │   ├── simulator.test.js
-│   └── probability.test.js
+│   ├── probability.test.js
+│   └── ev.test.js
 │
 │
 └── assets/
-    │
     ├── icons/
     └── images/
