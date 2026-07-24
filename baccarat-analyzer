@@ -1036,9 +1036,1117 @@ export default class Shoe {
 
 }
 │   ├── burn.js
-│   ├── rules.js
-│   ├── recorder.js
-│   ├── probability.js
+│   ├── /*
+=================================
+
+Baccarat Rules Engine
+
+負責：
+
+- 點數計算
+- 補牌規則
+- 勝負判定
+
+=================================
+*/
+
+
+export default class BaccaratRules {
+
+
+
+    /*
+    單張牌點數
+
+    A=1
+    2~9=牌面
+    10/J/Q/K=0
+
+    */
+
+
+    static cardValue(card){
+
+
+        if(card === "A"){
+
+            return 1;
+
+        }
+
+
+        if(
+            [
+                "10",
+                "J",
+                "Q",
+                "K"
+            ]
+            .includes(card)
+        ){
+
+            return 0;
+
+        }
+
+
+        return Number(card);
+
+
+    }
+
+
+
+
+
+    /*
+    計算手牌點數
+
+    百家樂只看個位數
+
+    例如：
+
+    7+8=15
+
+    =>5
+
+
+    */
+
+
+    static handValue(cards){
+
+
+        let total = 0;
+
+
+        cards.forEach(card=>{
+
+
+            total +=
+            this.cardValue(card);
+
+
+        });
+
+
+        return total % 10;
+
+
+    }
+
+
+
+
+
+    /*
+    判斷天牌
+
+    前兩張：
+
+    8或9
+
+    */
+
+
+    static isNatural(player, banker){
+
+
+        const p =
+        this.handValue(player);
+
+
+        const b =
+        this.handValue(banker);
+
+
+
+        return (
+
+            player.length === 2 &&
+
+            banker.length === 2 &&
+
+            (
+                p >= 8 ||
+                b >= 8
+            )
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+    /*
+    Player 是否補牌
+
+
+    規則：
+
+    0~5 補
+
+    6~7 停牌
+
+
+    */
+
+
+    static playerDraw(player){
+
+
+        const value =
+        this.handValue(player);
+
+
+        return value <= 5;
+
+
+    }
+
+
+
+
+
+
+
+    /*
+    Banker 補牌
+
+    兩張牌時：
+
+    Banker：
+
+    0-2 必補
+    3-6 視 Player 第三張
+    7 停
+
+
+    */
+
+
+    static bankerDraw(
+        banker,
+        playerThirdCard = null
+    ){
+
+
+        const bankerValue =
+        this.handValue(banker);
+
+
+
+        /*
+        0-2
+
+        必補
+
+        */
+
+
+        if(
+            bankerValue <= 2
+        ){
+
+            return true;
+
+        }
+
+
+
+
+        /*
+        7
+
+        停
+
+        */
+
+
+        if(
+            bankerValue >= 7
+        ){
+
+            return false;
+
+        }
+
+
+
+
+
+        /*
+        沒有Player第三張
+
+        代表還沒補牌
+
+        */
+
+
+        if(
+            playerThirdCard === null
+        ){
+
+            return false;
+
+        }
+
+
+
+
+        const third =
+        this.cardValue(
+            playerThirdCard
+        );
+
+
+
+
+
+        /*
+        Banker 3
+
+        Player第三張不是8
+
+        */
+
+
+        if(
+            bankerValue === 3
+        ){
+
+            return third !== 8;
+
+        }
+
+
+
+
+
+        /*
+        Banker 4
+
+        Player第三張 2-7
+
+        */
+
+
+        if(
+            bankerValue === 4
+        ){
+
+            return (
+                third >=2 &&
+                third <=7
+            );
+
+        }
+
+
+
+
+
+
+
+        /*
+        Banker 5
+
+        Player第三張 4-7
+
+        */
+
+
+        if(
+            bankerValue === 5
+        ){
+
+            return (
+                third >=4 &&
+                third <=7
+            );
+
+        }
+
+
+
+
+
+
+        /*
+        Banker 6
+
+        Player第三張 6-7
+
+        */
+
+
+        if(
+            bankerValue === 6
+        ){
+
+            return (
+                third ===6 ||
+                third ===7
+            );
+
+        }
+
+
+
+        return false;
+
+
+    }
+
+
+
+
+
+
+
+    /*
+    判斷勝負
+
+    回傳：
+
+    PLAYER
+
+    BANKER
+
+    TIE
+
+
+    */
+
+
+    static winner(
+        player,
+        banker
+    ){
+
+
+        const p =
+        this.handValue(player);
+
+
+        const b =
+        this.handValue(banker);
+
+
+
+        if(p>b){
+
+            return "PLAYER";
+
+        }
+
+
+        if(b>p){
+
+            return "BANKER";
+
+        }
+
+
+        return "TIE";
+
+
+    }
+
+
+
+}
+│   ├── /*
+=================================
+
+Baccarat Analyzer
+
+Round Recorder Engine
+
+負責：
+
+- 保存每局
+- 扣除牌張
+- Undo
+- 歷史紀錄
+
+=================================
+*/
+
+
+export default class Recorder {
+
+
+
+    constructor(shoe){
+
+
+        this.shoe = shoe;
+
+
+        this.history = [];
+
+
+    }
+
+
+
+
+
+    /*
+    新增牌局
+
+    player:
+    ["8","5","3"]
+
+    banker:
+    ["9","7","K"]
+
+    */
+
+
+    addRound(
+        player,
+        banker
+    ){
+
+
+        const cards = [
+
+            ...player,
+
+            ...banker
+
+        ];
+
+
+
+        /*
+        確認所有牌存在
+
+        */
+
+
+        for(
+            const card of cards
+        ){
+
+
+            if(
+                this.shoe.remaining(card)<=0
+            ){
+
+                throw new Error(
+                    `牌不足:${card}`
+                );
+
+            }
+
+
+        }
+
+
+
+
+
+        /*
+        扣牌
+
+        */
+
+
+        cards.forEach(card=>{
+
+
+            this.shoe.remove(card);
+
+
+        });
+
+
+
+
+
+        const round = {
+
+
+            id:
+            this.history.length + 1,
+
+
+            player:
+            [...player],
+
+
+            banker:
+            [...banker],
+
+
+            cards:
+            cards,
+
+
+            timestamp:
+            new Date()
+
+        };
+
+
+
+
+
+        this.history.push(round);
+
+
+
+        return round;
+
+
+    }
+
+
+
+
+
+
+
+    /*
+    Undo上一局
+
+    */
+
+
+    undo(){
+
+
+        if(
+            this.history.length===0
+        ){
+
+            return false;
+
+        }
+
+
+
+
+        const last =
+        this.history.pop();
+
+
+
+
+        last.cards.forEach(card=>{
+
+
+            this.shoe.restore(card);
+
+
+        });
+
+
+
+        return last;
+
+
+    }
+
+
+
+
+
+
+
+    /*
+    取得全部紀錄
+
+    */
+
+
+    getHistory(){
+
+
+        return [
+            ...this.history
+        ];
+
+    }
+
+
+
+
+
+
+    /*
+    清除紀錄
+
+    */
+
+
+    clear(){
+
+
+        this.history=[];
+
+
+    }
+
+
+
+
+
+
+    /*
+    最近一局
+
+    */
+
+
+    last(){
+
+
+        if(
+            this.history.length===0
+        ){
+
+            return null;
+
+        }
+
+
+        return (
+            this.history[
+                this.history.length-1
+            ]
+        );
+
+
+    }
+
+
+
+
+}
+
+
+│   ├── /*
+=================================
+
+Baccarat Probability Engine
+
+使用 Monte Carlo Simulation
+
+計算：
+
+Player
+Banker
+Tie
+Pair
+Super6
+
+=================================
+*/
+
+
+import BaccaratRules from "./rules.js";
+
+
+
+export default class ProbabilityEngine {
+
+
+
+    constructor(
+        simulations = 100000
+    ){
+
+
+        this.simulations =
+            simulations;
+
+
+    }
+
+
+
+
+
+
+    /*
+    分析下一局
+
+    shoe:
+    目前牌靴
+
+    */
+
+
+    analyze(shoe){
+
+
+        let result = {
+
+
+            PLAYER:0,
+
+            BANKER:0,
+
+            TIE:0,
+
+
+            PLAYER_PAIR:0,
+
+            BANKER_PAIR:0,
+
+
+            SUPER6:0
+
+
+        };
+
+
+
+
+
+        for(
+            let i=0;
+            i<this.simulations;
+            i++
+        ){
+
+
+            const copy =
+            shoe.clone();
+
+
+
+
+            const outcome =
+            this.simulateRound(copy);
+
+
+
+
+            result[
+                outcome.winner
+            ]++;
+
+
+
+
+            if(
+                outcome.playerPair
+            ){
+
+                result.PLAYER_PAIR++;
+
+            }
+
+
+
+
+            if(
+                outcome.bankerPair
+            ){
+
+                result.BANKER_PAIR++;
+
+            }
+
+
+
+
+            if(
+                outcome.super6
+            ){
+
+                result.SUPER6++;
+
+            }
+
+
+        }
+
+
+
+
+
+        /*
+        轉百分比
+
+        */
+
+
+        Object.keys(result)
+        .forEach(key=>{
+
+
+            result[key] =
+            (
+                result[key]
+                /
+                this.simulations
+            )
+            *
+            100;
+
+
+        });
+
+
+
+
+        return result;
+
+
+    }
+
+
+
+
+
+
+
+    /*
+    模擬一局
+
+    */
+
+
+    simulateRound(shoe){
+
+
+
+        const player=[];
+
+        const banker=[];
+
+
+
+
+        /*
+        發四張
+
+        P B P B
+
+        */
+
+
+        player.push(
+            this.draw(shoe)
+        );
+
+
+        banker.push(
+            this.draw(shoe)
+        );
+
+
+        player.push(
+            this.draw(shoe)
+        );
+
+
+        banker.push(
+            this.draw(shoe)
+        );
+
+
+
+
+
+        /*
+        天牌
+
+        */
+
+
+        if(
+            !BaccaratRules
+            .isNatural(
+                player,
+                banker
+            )
+        ){
+
+
+
+            /*
+            Player補牌
+
+            */
+
+
+            if(
+                BaccaratRules
+                .playerDraw(player)
+            ){
+
+
+                const card =
+                this.draw(shoe);
+
+
+                player.push(card);
+
+
+            }
+
+
+
+
+
+            /*
+            Banker補牌
+
+            */
+
+
+            if(
+                BaccaratRules
+                .bankerDraw(
+                    banker,
+                    player[2] || null
+                )
+            ){
+
+
+                banker.push(
+                    this.draw(shoe)
+                );
+
+
+            }
+
+
+        }
+
+
+
+
+
+        return {
+
+
+            winner:
+
+            BaccaratRules
+            .winner(
+                player,
+                banker
+            ),
+
+
+
+            playerPair:
+
+            player[0]===player[1],
+
+
+
+            bankerPair:
+
+            banker[0]===banker[1],
+
+
+
+
+            super6:
+
+            (
+                BaccaratRules
+                .handValue(banker)
+                ===6
+                &&
+                banker.length===3
+            )
+
+
+        };
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    /*
+    從牌靴抽牌
+
+    */
+
+
+    draw(shoe){
+
+
+
+        const available=[];
+
+
+
+        Object.keys(
+            shoe.cards
+        )
+        .forEach(card=>{
+
+
+            for(
+                let i=0;
+                i<
+                shoe.remaining(card);
+                i++
+            ){
+
+                available.push(card);
+
+            }
+
+
+        });
+
+
+
+
+
+        const index =
+        Math.floor(
+            Math.random()
+            *
+            available.length
+        );
+
+
+
+        const card =
+        available[index];
+
+
+
+        shoe.remove(card);
+
+
+
+        return card;
+
+
+    }
+
+
+
+
+
+}
 │   ├── ev.js
 │   ├── kelly.js
 │   └── simulator.js
