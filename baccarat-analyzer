@@ -4,155 +4,378 @@ baccarat-analyzer/
 ├── manifest.json
 ├── service-worker.js
 ├── README.md
+├── favicon.ico
 │
 ├── src/
 │
 ├── app/
-│   ├── app.js
-│   ├── router.js
-│   ├── state.js
-│   └── events.js              # 新增：事件管理
-│
+│   ├── app.js                  # App入口
+│   ├── router.js               # 畫面切換
+│   ├── state.js                # 全域狀態
+│   ├── events.js               # EventBus
+│   ├── constants.js            # 常數
+│   └── version.js
 │
 ├── engine/
-│   │
-│   ├── /**
- * Baccarat Card Model
+│
+│   ├── card.js/**
+ * Baccarat Analyzer
+ * -----------------------------------------
+ * Card Model
  *
  * 一張實體牌
  *
- * rank:
+ * rank :
  * A,2,3,4,5,6,7,8,9,10,J,Q,K
  *
- * suit:
+ * suit :
  * S,H,D,C
  *
- * deck:
- * 第幾副牌 (1~8)
+ * deck :
+ * 第幾副牌 (>=1)
  */
 
+const VALID_RANKS = [
+    "A",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "J",
+    "Q",
+    "K"
+];
+
+const VALID_SUITS = [
+    "S",
+    "H",
+    "D",
+    "C"
+];
 
 export default class Card {
 
-
     constructor(rank, suit, deck = 1) {
 
+        if (!VALID_RANKS.includes(rank)) {
+            throw new Error(`Invalid rank : ${rank}`);
+        }
 
-        this.rank = rank;
+        if (!VALID_SUITS.includes(suit)) {
+            throw new Error(`Invalid suit : ${suit}`);
+        }
 
-        this.suit = suit;
-
-        this.deck = deck;
-
-
+        if (!Number.isInteger(deck) || deck < 1) {
+    throw new Error(`Invalid deck : ${deck}`);
     }
 
+        this.rank = rank;
+        this.suit = suit;
+        this.deck = deck;
 
+        Object.freeze(this);
+    }
 
     /**
      * 百家樂牌值
-     *
-     * A = 1
-     * 2-9 = face value
-     * 10,J,Q,K = 0
      */
-    get baccaratValue(){
+    get baccaratValue() {
 
+        switch (this.rank) {
 
-        if(this.rank === "A"){
-            return 1;
+            case "A":
+                return 1;
+
+            case "10":
+            case "J":
+            case "Q":
+            case "K":
+                return 0;
+
+            default:
+                return Number(this.rank);
         }
-
-
-        if(
-            [
-                "10",
-                "J",
-                "Q",
-                "K"
-            ].includes(this.rank)
-        ){
-
-            return 0;
-
-        }
-
-
-        return Number(this.rank);
-
 
     }
 
-
-
     /**
-     * Pair 判定用
-     *
-     * 百家樂 Pair 看牌面
-     *
-     * 例如：
-     *
-     * 8♠
-     * 8♦
-     *
-     * 是 Pair
+     * Pair 比較值
      */
-    get pairValue(){
-
-
+    get pairValue() {
         return this.rank;
-
-
     }
 
-
-
     /**
-     * 是否為圖片牌
+     * 是否圖片牌
      */
-    get isFaceCard(){
-
+    get isFaceCard() {
 
         return [
             "10",
             "J",
             "Q",
             "K"
-
         ].includes(this.rank);
 
-
     }
 
-
-
     /**
-     * 唯一識別
-     *
-     * 例如：
-     *
-     * 3-S-2
-     *
-     * 第二副牌
-     * 黑桃3
+     * 是否 Ace
      */
-    get id(){
-
-
-        return `${this.deck}-${this.suit}-${this.rank}`;
-
-
+    get isAce() {
+        return this.rank === "A";
     }
 
-
-
     /**
-     * 顯示
+     * 是否紅色
      */
-    toString(){
+    get isRed() {
+
+        return (
+            this.suit === "H" ||
+            this.suit === "D"
+        );
+
+    }
+
+/**
+ * 是否黑色
+ */
+get isBlack() {
+
+    return (
+        this.suit === "S" ||
+        this.suit === "C"
+    );
+}
+/**
+ * 顏色
+ */
+get color() {
+
+    if (this.isRed) {
+        return "red";
+    }
+
+    if (this.isBlack) {
+        return "black";
+    }
+
+    return null;
+
+}
+/**
+ * 花色符號
+ */
+get suitSymbol() {
+
+    switch (this.suit) {
+
+        case "S":
+            return "♠";
+
+        case "H":
+            return "♥";
+
+        case "D":
+            return "♦";
+
+        case "C":
+            return "♣";
+
+        default:
+            return "";
+    }
+
+}
+/**
+ * 簡短名稱
+ */
+get shortName() {
+
+    return `${this.rank}${this.suit}`;
+
+}
+/**
+ * 唯一ID
+ */
+get id() {
+
+    return `${this.deck}-${this.suit}-${this.rank}`;
+
+}
+    /**
+     * 是否同一張牌
+     */
+    equals(card) {
+
+    if (!(card instanceof Card)) {
+        return false;
+    }
+
+    return this.id === card.id;
+
+    }
+
+    /**
+     * 顯示文字
+     */
+    toString() {
+
+        return `${this.rank}${this.suitSymbol}`;
+
+    }
+
+    /**
+     * JSON
+     */
+    toJSON() {
+
+        return {
+
+            rank: this.rank,
+            suit: this.suit,
+            deck: this.deck
+
+        };
+
+    }
+
+    /**
+     * JSON還原
+     */
+    static fromJSON(data) {
+
+        return new Card(
+            data.rank,
+            data.suit,
+            data.deck
+        );
+
+    }
+
+    /**
+     * 建立複製
+     */
+    clone() {
+
+        return new Card(
+            this.rank,
+            this.suit,
+            this.deck
+        );
+
+    }
+
+}
+│   ├── deck.js// src/engine/deck.js
 
 
-        return `${this.rank}${this.suit}`;
+/**
+ * Baccarat Analyzer
+ * -----------------------------------------
+ * Deck Model
+ *
+ * 一副標準撲克牌
+ *
+ * 52 Cards
+ *
+ * Rank:
+ * A,2,3,4,5,6,7,8,9,10,J,Q,K
+ *
+ * Suit:
+ * S,H,D,C
+ */
+
+
+import Card from "./card.js";
+
+
+const RANKS = [
+
+    "A",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "J",
+    "Q",
+    "K"
+
+];
+
+
+const SUITS = [
+
+    "S",
+    "H",
+    "D",
+    "C"
+
+];
+
+
+export default class Deck {
+
+
+    constructor(deckNumber = 1){
+
+    if(
+        !Number.isInteger(deckNumber) ||
+        deckNumber < 1
+    ){
+        throw new Error(
+            `Invalid deck number: ${deckNumber}`
+        );
+    }
+
+
+    this.deckNumber = deckNumber;
+
+    this.cards = [];
+
+    this.create();
+
+} 
+
+
+
+    /**
+     * 建立52張牌
+     */
+    create(){
+
+
+        for(const suit of SUITS){
+
+
+            for(const rank of RANKS){
+
+
+                this.cards.push(
+
+                    new Card(
+                        rank,
+                        suit,
+                        this.deckNumber
+                    )
+
+                );
+
+
+            }
+
+        }
 
 
     }
@@ -160,20 +383,66 @@ export default class Card {
 
 
     /**
-     * JSON儲存
-     *
-     * LocalStorage會用到
+     * 牌數
+     */
+    get count(){
+
+
+        return this.cards.length;
+
+
+    }
+    /**
+     * 驗證是否完整52張牌
+     */
+    isValid(){
+
+        return this.cards.length === 52;
+
+    }
+
+
+    /**
+     * 是否包含某張牌
+     */
+    has(card){
+
+
+        return this.cards.some(
+
+            item => item.equals(card)
+
+        );
+
+
+    }
+
+
+
+    /**
+     * 取得所有牌
+     */
+    getCards(){
+
+
+        return [...this.cards];
+
+
+    }
+
+
+
+    /**
+     * JSON
      */
     toJSON(){
 
 
         return {
 
-            rank:this.rank,
+            deckNumber:this.deckNumber,
 
-            suit:this.suit,
-
-            deck:this.deck
+            cards:this.cards
 
         };
 
@@ -183,19 +452,788 @@ export default class Card {
 
 
     /**
-     * 從JSON恢復牌
+     * JSON恢復
      */
     static fromJSON(data){
 
 
-        return new Card(
+        const deck = new Deck(
 
-            data.rank,
+            data.deckNumber
 
-            data.suit,
+        );
 
-            data.deck
 
+        deck.cards = data.cards.map(
+
+            card => Card.fromJSON(card)
+
+        );
+
+
+        return deck;
+
+
+    }
+
+
+}                 # 一副牌
+│   ├── shoe.js// src/engine/shoe.js
+
+
+/**
+ * Baccarat Analyzer
+ * -----------------------------------------
+ * Shoe Model
+ *
+ * 百家樂牌靴
+ *
+ * 8 Decks
+ *
+ * 416 Cards
+ */
+
+
+import Deck from "./deck.js";
+import Card from "./card.js";
+
+
+export default class Shoe {
+
+
+    constructor(deckCount = 8){
+
+
+        if(
+            !Number.isInteger(deckCount) ||
+            deckCount < 1
+        ){
+
+            throw new Error(
+                `Invalid deck count: ${deckCount}`
+            );
+
+        }
+
+
+        this.deckCount = deckCount;
+
+
+        this.cards = [];
+
+        this.discarded = [];
+
+
+        this.create();
+
+
+    }
+
+
+
+    /**
+     * 建立牌靴
+     */
+    create(){
+
+
+        for(
+            let i = 1;
+            i <= this.deckCount;
+            i++
+        ){
+
+            const deck = new Deck(i);
+
+
+            this.cards.push(
+                ...deck.getCards()
+            );
+
+
+        }
+
+
+    }
+    /**
+     * 總牌數
+     */
+    get total(){
+
+        return this.deckCount * 52;
+
+    }
+
+
+
+    /**
+     * 剩餘牌數
+     */
+    get remaining(){
+
+
+        return this.cards.length;
+
+
+    }
+
+
+
+    /**
+     * 已使用牌數
+     */
+    get used(){
+
+
+        return this.discarded.length;
+
+
+    }
+
+
+    /**
+     * 已使用牌列表
+     */
+    get history(){
+
+        return [
+            ...this.discarded
+        ];
+
+    }
+
+
+
+    /**
+     * 剩餘比例
+     */
+    get remainingRatio(){
+
+        return this.remaining / this.total;
+
+    }
+
+
+    /**
+     * 洗牌
+     */
+    shuffle(){
+
+
+        for(
+            let i = this.cards.length - 1;
+            i > 0;
+            i--
+        ){
+
+            const j = Math.floor(
+                Math.random() * (i + 1)
+            );
+
+
+            [
+                this.cards[i],
+                this.cards[j]
+            ] =
+            [
+                this.cards[j],
+                this.cards[i]
+            ];
+
+        }
+
+
+        return this;
+
+
+    }
+
+
+
+    /**
+     * 抽牌
+     */
+    draw(){
+
+
+        const card = this.cards.pop();
+
+
+        if(card){
+
+            this.discarded.push(card);
+
+        }
+
+
+        return card;
+
+
+    }
+
+
+
+    /**
+     * 查看剩餘牌
+     */
+    peek(){
+
+
+        return [
+            ...this.cards
+        ];
+
+
+    }
+
+
+
+    /**
+     * 加入指定牌到已使用
+     */
+    remove(card){
+
+
+        const index =
+            this.cards.findIndex(
+
+                item => item.equals(card)
+
+            );
+
+
+        if(index === -1){
+
+            return false;
+
+        }
+
+
+        const removed =
+            this.cards.splice(
+                index,
+                1
+            )[0];
+
+
+        this.discarded.push(
+            removed
+        );
+
+
+        return true;
+
+
+    }
+
+
+
+    /**
+     * 重置牌靴
+     */
+    reset(){
+
+    this.cards = [];
+
+    this.discarded = [];
+
+    this.create();
+
+    this.shuffle();
+
+    return this;
+
+    }
+
+
+
+    /**
+     * JSON
+     */
+    toJSON(){
+
+
+        return {
+
+            deckCount:this.deckCount,
+
+            cards:this.cards,
+
+            discarded:this.discarded
+
+        };
+
+
+    }
+
+
+
+    /**
+     * JSON還原
+     */
+    static fromJSON(data){
+
+
+    const shoe =
+        new Shoe(
+            data.deckCount
+        );
+
+
+    shoe.cards =
+        data.cards.map(
+            card => Card.fromJSON(card)
+        );
+
+
+    shoe.discarded =
+        data.discarded.map(
+            card => Card.fromJSON(card)
+        );
+
+
+    return shoe;
+
+
+    }
+
+
+
+}                 # 八副牌
+│   ├── burn.js// src/engine/burn.js
+
+
+/**
+ * Baccarat Analyzer
+ * -----------------------------------------
+ * Burn Model
+ *
+ * 百家樂燒牌
+ *
+ * 開靴第一張牌決定燒牌數
+ */
+
+
+export default class Burn {
+
+
+    constructor(shoe){
+
+
+    if(!shoe){
+
+        throw new Error(
+            "Shoe is required"
+        );
+
+    }
+
+
+    this.shoe = shoe;
+
+
+    // 是否已完成燒牌
+    this.executed = false;
+
+
+    // 燒牌指示牌
+    this.indicator = null;
+
+
+    // 燒牌數量
+    this.amount = 0;
+
+
+    // 隱藏燒牌
+    this.hiddenBurnCards = [];
+
+
+    }  
+
+
+    /**
+     * 計算燒牌數
+     *
+     * A = 1
+     * 2-9 = 點數
+     * 10,J,Q,K = 10
+     */
+    calculate(card){
+
+
+        if(!card){
+
+            throw new Error(
+                "Card required"
+            );
+
+        }
+
+
+        if(card.rank === "A"){
+
+            return 1;
+
+        }
+
+
+        if(
+            [
+                "10",
+                "J",
+                "Q",
+                "K"
+            ].includes(card.rank)
+        ){
+
+            return 10;
+
+        }
+
+
+        return Number(card.rank);
+
+
+    }
+
+
+
+    /**
+     * 執行燒牌
+     */
+    execute(){
+
+
+    if(this.executed){
+
+        throw new Error(
+            "Burn already executed"
+        );
+
+    }
+
+
+    this.indicator =
+        this.shoe.draw();
+
+
+
+    if(!this.indicator){
+
+        throw new Error(
+            "No burn indicator"
+        );
+
+    }
+
+
+
+    // 計算燒牌數
+    this.amount =
+        this.calculate(
+            this.indicator
+        );
+
+
+
+    // 實際燒牌，不公開
+    for(
+        let i = 0;
+        i < this.amount;
+        i++
+    ){
+
+        const card =
+            this.shoe.draw();
+
+
+        if(card){
+
+            this.hiddenBurnCards.push(card);
+
+        }
+
+    }
+
+
+    this.executed = true;
+
+
+    return {
+
+        indicator:this.indicator,
+
+        amount:this.amount
+
+    };
+
+
+    }
+
+
+
+    /**
+     * 是否完成燒牌
+     */
+    get isExecuted(){
+
+        return this.executed;
+
+    }
+
+
+
+    /**
+     * 燒牌數量
+     */
+    get count(){
+
+        return this.hiddenBurnCards.length;
+
+    }
+
+
+
+    /**
+     * 公開資訊
+     */
+    get info(){
+
+        return {
+
+            indicator:this.indicator,
+
+            amount:this.amount
+
+        };
+
+    }
+
+
+
+    /**
+     * JSON
+     */
+    toJSON(){
+
+        return {
+
+            indicator:this.indicator,
+
+            amount:this.amount
+
+        };
+
+    }
+}
+│   ├── draw.js
+│   ├── discard.js              # 棄牌堆
+│   ├── hand.js// src/engine/hand.js
+
+
+/**
+ * Baccarat Analyzer
+ * -----------------------------------------
+ *
+ * Hand Model
+ *
+ * 百家樂手牌
+ *
+ */
+
+
+import Card from "./card.js";
+
+
+export default class Hand {
+
+
+    constructor(cards = []){
+
+
+        this.cards = [];
+
+
+        for(const card of cards){
+
+            this.add(card);
+
+        }
+
+
+    }
+
+
+
+    /**
+     * 加入牌
+     */
+    add(card){
+
+
+        if(!(card instanceof Card)){
+
+            throw new Error(
+                "Invalid card"
+            );
+
+        }
+
+
+        this.cards.push(card);
+
+
+        return this;
+
+    }
+
+
+
+    /**
+     * 取得手牌
+     *
+     * 回傳副本，避免外部修改
+     */
+    getCards(){
+
+        return [
+            ...this.cards
+        ];
+
+    }
+
+
+
+    /**
+     * 顯示手牌
+     *
+     * 例如：
+     * A♠ 8♥
+     */
+    toString(){
+
+        return this.cards
+            .map(card => card.toString())
+            .join(" ");
+
+    }
+
+
+
+    /**
+     * 移除牌
+     */
+    remove(card){
+
+        const index =
+            this.cards.findIndex(
+                item => item.equals(card)
+            );
+
+
+        if(index === -1){
+
+            return false;
+
+        }
+
+
+        this.cards.splice(
+            index,
+            1
+        );
+
+
+        return true;
+
+    }
+
+
+
+    /**
+     * 是否包含牌
+     */
+    hasCard(card){
+
+        return this.cards.some(
+            item => item.equals(card)
+        );
+
+    }
+
+
+
+    /**
+     * 手牌張數
+     */
+    get count(){
+
+        return this.cards.length;
+
+    }
+
+
+
+    /**
+     * 最後一張牌
+     */
+    get lastCard(){
+
+        return this.cards[
+            this.cards.length - 1
+        ] || null;
+
+    }
+
+
+
+    /**
+     * 百家樂點數
+     *
+     * 只取個位數
+     */
+    get value(){
+
+
+        const total =
+            this.cards.reduce(
+
+                (sum, card)=>{
+
+                    return sum + card.baccaratValue;
+
+                },
+
+                0
+
+            );
+
+
+        return total % 10;
+
+
+    }
+
+
+
+    /**
+     * 是否天牌
+     *
+     * Natural 8 / 9
+     */
+    get isNatural(){
+
+
+        if(this.cards.length !== 2){
+
+            return false;
+
+        }
+
+
+        return (
+            this.value === 8 ||
+            this.value === 9
         );
 
 
@@ -203,89 +1241,436 @@ export default class Card {
 
 
 
-}                # 單張牌
-│   ├── shoe.js                # 8副牌牌靴
-│   ├── burn.js                # 燒牌
-│   ├── draw.js                # 抽牌
-│   ├── hand.js                # 手牌計算
-│   ├── rules.js               # 百家樂規則
-│   ├── simulator.js           # 模擬一局
-│   ├── validator.js           # 新增：牌局合法檢查
-│   └── roundResult.js
-│
+    /**
+     * 是否 Pair
+     *
+     * 百家樂對子
+     * 只看前兩張
+     */
+    get isPair(){
+
+        if(this.cards.length !== 2){
+
+            return false;
+
+        }
+
+
+        return (
+            this.cards[0].pairValue
+            ===
+            this.cards[1].pairValue
+        );
+
+    }
+
+
+    /**
+     * 清空手牌
+     */
+    clear(){
+
+
+        this.cards = [];
+
+        return this;
+
+    }
+
+
+
+    /**
+     * 複製手牌
+     */
+    clone(){
+
+        return new Hand(
+            this.cards.map(
+                card=>card.clone()
+            )
+        );
+
+    }
+
+
+
+    /**
+     * JSON
+     */
+    toJSON(){
+
+
+        return {
+
+            cards:this.cards.map(
+                card=>card.toJSON()
+            )
+
+        };
+
+    }
+
+
+
+    /**
+     * JSON還原
+     */
+    static fromJSON(data){
+
+        return new Hand(
+            data.cards.map(
+                card=>Card.fromJSON(card)
+            )
+        );
+
+    }
+
+
+
+}
+│   ├── rules.js/**
+ * Baccarat Analyzer
+ * -----------------------------------------
+ *
+ * Baccarat Rules
+ *
+ * 百家樂規則
+ *
+ */
+
+
+export default class BaccaratRules {
+
+
+    /**
+     * 是否天牌
+     *
+     * Natural 8 / 9
+     */
+    static isNatural(hand){
+
+        if(hand.count !== 2){
+
+            return false;
+
+        }
+
+
+        return (
+            hand.value === 8 ||
+            hand.value === 9
+        );
+
+    }
+
+
+
+    /**
+     * 閒家是否補牌
+     *
+     * Player:
+     *
+     * 0-5 補
+     * 6-7 停
+     * 8-9 Natural
+     */
+    static playerDraw(hand){
+
+
+        if(this.isNatural(hand)){
+
+            return false;
+
+        }
+
+
+        return hand.value <= 5;
+
+
+    }
+
+
+
+    /**
+     * 莊家是否補牌
+     *
+     * 第一階段
+     *
+     * 沒有閒家第三張時
+     */
+    static bankerDrawWithoutThird(
+        hand
+    ){
+
+
+        if(this.isNatural(hand)){
+
+            return false;
+
+        }
+
+
+        return hand.value <= 5;
+
+
+    }
+
+
+
+    /**
+     * 莊家是否補第三張
+     *
+     * 完整規則
+     */
+    static bankerDraw(
+        hand,
+        playerThirdCard
+    ){
+
+    if(!playerThirdCard){
+
+            throw new Error(
+                "Player third card required"
+            );
+
+    }
+
+
+        const value = hand.value;
+
+
+        if(value <= 2){
+
+            return true;
+
+        }
+
+
+        if(value === 3){
+
+            return (
+                playerThirdCard.rank !== "8"
+            );
+
+        }
+
+
+        if(value === 4){
+
+            return [
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7"
+            ].includes(
+                playerThirdCard.rank
+            );
+
+        }
+
+
+
+    if(value === 5){
+
+        return [
+            "4",
+            "5",
+            "6",
+            "7"
+        ].includes(
+            playerThirdCard.rank
+        );
+
+    }
+
+
+    if(value === 6){
+
+        return [
+            "6",
+            "7"
+        ].includes(
+            playerThirdCard.rank
+        );
+
+    }
+
+
+    return false;
+
+}
+
+
+
+    /**
+     * 勝負比較
+     */
+    static compare(
+        playerHand,
+        bankerHand
+    ){
+
+
+        const player =
+            playerHand.value;
+
+
+        const banker =
+            bankerHand.value;
+
+
+
+        if(player > banker){
+
+            return "PLAYER";
+
+        }
+
+
+        if(banker > player){
+
+            return "BANKER";
+
+        }
+
+
+        return "TIE";
+
+
+    }
+
+
+}
+│   ├── simulator.js
+│   ├── validator.js
+│   ├── score.js
+│   ├── thirdCardRule.js
+│   ├── roundResult.js
+│   └── shoeStatistics.js
 │
 ├── analysis/
-│   │
-│   ├── probability.js         # 勝率
-│   ├── montecarlo.js          # 模擬
-│   ├── exact.js               # 精確計算接口
-│   ├── sidebets.js            # Side Bet機率
-│   ├── ev.js                  # 期望值
-│   ├── kelly.js               # Kelly下注
-│   ├── bankroll.js            # 資金管理
-│   ├── ranking.js             # EV排序
-│   ├── confidence.js          # 新增：信心評分
-│   └── analyzer.js            # 總分析入口
 │
+│   ├── analyzer.js
+│   ├── probability.js
+│   ├── exact.js
+│   ├── montecarlo.js
+│   ├── sidebets.js
+│   ├── ev.js
+│   ├── kelly.js
+│   ├── bankroll.js
+│   ├── ranking.js
+│   ├── confidence.js
+│   ├── recommendation.js
+│   ├── variance.js
+│   ├── roi.js
+│   └── risk.js
+│
+├── roadmap/
+│
+│   ├── beadRoad.js             # 珠盤路
+│   ├── bigRoad.js              # 大路
+│   ├── bigEyeRoad.js           # 大眼仔
+│   ├── smallRoad.js            # 小路
+│   ├── cockroachRoad.js        # 曱甴路
+│   └── roadmapAnalyzer.js
+│
+├── statistics/
+│
+│   ├── shoeHistory.js
+│   ├── bettingHistory.js
+│   ├── winrate.js
+│   ├── streak.js
+│   ├── trends.js
+│   └── report.js
 │
 ├── config/
-│   │
-│   ├── payouts.js             # 賠率設定
-│   ├── rules.js               # 規則設定
-│   └── settings.js            # 使用者設定
 │
-│
-├── data/
-│   │
-│   ├── history.js             # 歷史牌局
-│   ├── storage.js             # LocalStorage
-│   ├── backup.js              # 匯出/匯入
-│   └── database.js            # 新增資料管理
-│
+│   ├── payouts.js
+│   ├── baccaratRules.js
+│   ├── casinoProfiles.js       # 不同賭場賠率
+│   ├── settings.js
+│   └── defaults.js
 │
 ├── workers/
-│   │
-│   └── montecarlo.worker.js
 │
+│   ├── montecarlo.worker.js
+│   ├── exact.worker.js
+│   └── statistics.worker.js
+│
+├── data/
+│
+│   ├── storage.js
+│   ├── history.js
+│   ├── backup.js
+│   ├── database.js
+│   ├── import.js
+│   └── export.js
 │
 ├── components/
-│   │
-│   ├── CardInput.js           # 輸入牌
-│   ├── ShoeStatus.js          # 剩餘牌
-│   ├── BetTable.js            # 投注列表
-│   ├── EVCard.js              # EV顯示
-│   ├── Recommendation.js      # 推薦下注
-│   ├── Bankroll.js             # 本金管理
-│   ├── Chart.js
-│   └── Settings.js             # 新增設定頁
 │
+│   ├── Header.js
+│   ├── Footer.js
+│   ├── CardInput.js
+│   ├── ShoeStatus.js
+│   ├── RemainingCards.js
+│   ├── ProbabilityTable.js
+│   ├── EVTable.js
+│   ├── BetTable.js
+│   ├── Recommendation.js
+│   ├── KellyCard.js
+│   ├── Bankroll.js
+│   ├── SideBetCard.js
+│   ├── ConfidenceBar.js
+│   ├── Roadmap.js
+│   ├── Statistics.js
+│   ├── Chart.js
+│   ├── Settings.js
+│   └── Toast.js
+│
+├── pages/
+│
+│   ├── dashboard.js            # 主畫面
+│   ├── shoe.js                 # 牌靴
+│   ├── analysis.js             # 分析
+│   ├── roadmap.js              # 路單
+│   ├── statistics.js           # 統計
+│   ├── settings.js             # 設定
+│   └── about.js
 │
 ├── styles/
-│   │
+│
 │   ├── main.css
 │   ├── mobile.css
 │   ├── dark.css
+│   ├── light.css
+│   ├── variables.css
 │   └── components.css
 │
-│
 ├── utils/
-│   │
+│
 │   ├── math.js
 │   ├── formatter.js
 │   ├── random.js
-│   └── cache.js                # 新增計算快取
-│
+│   ├── cache.js
+│   ├── logger.js
+│   ├── timer.js
+│   └── debounce.js
 │
 ├── tests/
-│   │
+│
 │   ├── card.test.js
 │   ├── shoe.test.js
 │   ├── rules.test.js
 │   ├── simulator.test.js
 │   ├── probability.test.js
-│   └── ev.test.js
-│
+│   ├── ev.test.js
+│   ├── roadmap.test.js
+│   └── analyzer.test.js
 │
 └── assets/
     ├── icons/
+    ├── cards/
+    ├── chips/
     └── images/
