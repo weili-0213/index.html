@@ -251,6 +251,12 @@ get id() {
      */
     static fromJSON(data) {
 
+
+        if(!data){
+            throw new Error("Card data required");
+        }
+
+
         return new Card(
             data.rank,
             data.suit,
@@ -353,7 +359,9 @@ export default class Deck {
     /**
      * 建立52張牌
      */
-    create(){
+    create() {
+
+        this.cards = [];
 
 
         for(const suit of SUITS){
@@ -523,8 +531,11 @@ export default class Shoe {
 
         this.discarded = [];
 
+        this.burned = [];
 
         this.create();
+
+        this.shuffle();
 
 
     }
@@ -536,25 +547,24 @@ export default class Shoe {
      */
     create(){
 
+        this.cards=[];
+
 
         for(
-            let i = 1;
-            i <= this.deckCount;
+            let i=1;
+            i<=this.deckCount;
             i++
         ){
 
-            const deck = new Deck(i);
-
+            const deck=new Deck(i);
 
             this.cards.push(
                 ...deck.getCards()
             );
 
-
         }
 
-
-    }
+}
     /**
      * 總牌數
      */
@@ -673,6 +683,29 @@ export default class Shoe {
 
 
 
+     /**
+      * 加入燒牌紀錄
+      */
+     burn(card){
+
+
+         if(!card){
+
+             return false;
+
+         }
+
+
+         this.burned.push(card);
+
+         return true;
+
+
+    }
+
+
+
+
     /**
      * 查看剩餘牌
      */
@@ -737,6 +770,8 @@ export default class Shoe {
 
     this.discarded = [];
 
+    this.burned = [];
+
     this.create();
 
     this.shuffle();
@@ -752,17 +787,30 @@ export default class Shoe {
      */
     toJSON(){
 
-
         return {
 
             deckCount:this.deckCount,
 
             cards:this.cards,
 
-            discarded:this.discarded
+            discarded:this.discarded,
+
+            burned:this.burned
 
         };
 
+    }
+
+
+
+    /**
+     * 建立牌靴複本
+     */
+    clone(){
+
+        return Shoe.fromJSON(
+            this.toJSON()
+        );
 
     }
 
@@ -792,6 +840,15 @@ export default class Shoe {
         );
 
 
+    shoe.burned =
+        data.burned
+        ?
+        data.burned.map(
+            card => Card.fromJSON(card)
+        )
+        :
+        [];
+
     return shoe;
 
 
@@ -800,6 +857,7 @@ export default class Shoe {
 
 
 }                 # 八副牌
+
 │   ├── burn.js// src/engine/burn.js
 
 
@@ -951,6 +1009,8 @@ export default class Burn {
 
             this.hiddenBurnCards.push(card);
 
+            this.shoe.burn(card);
+
         }
 
     }
@@ -1026,8 +1086,6 @@ export default class Burn {
 
     }
 }
-│   ├── draw.js
-│   ├── discard.js              # 棄牌堆
 │   ├── hand.js// src/engine/hand.js
 
 
@@ -1328,230 +1386,306 @@ export default class Hand {
 
 
 }
-│   ├── rules.js/**
+│   ├── draw.js/**
  * Baccarat Analyzer
  * -----------------------------------------
  *
- * Baccarat Rules
+ * Draw Helper
  *
- * 百家樂規則
+ * 負責從 Shoe 抽牌並加入 Hand
  *
  */
 
 
-export default class BaccaratRules {
+export function drawTo(hand, shoe){
 
 
-    /**
-     * 是否天牌
-     *
-     * Natural 8 / 9
-     */
-    static isNatural(hand){
+    if(!hand){
 
-        if(hand.count !== 2){
+        throw new Error(
+            "Hand is required"
+        );
 
-            return false;
-
-        }
+    }
 
 
-        return (
-            hand.value === 8 ||
-            hand.value === 9
+    if(!shoe){
+
+        throw new Error(
+            "Shoe is required"
+        );
+
+    }
+
+
+    const card = shoe.draw();
+
+
+
+    if(!card){
+
+        throw new Error(
+            "No cards remaining in shoe"
         );
 
     }
 
 
 
-    /**
-     * 閒家是否補牌
-     *
-     * Player:
-     *
-     * 0-5 補
-     * 6-7 停
-     * 8-9 Natural
-     */
-    static playerDraw(hand){
+    hand.add(card);
 
 
-        if(this.isNatural(hand)){
+    return card;
 
-            return false;
+}
+│   ├── rules/
+    ├── playerRule.js// src/engine/rules/playerRule.js
 
-        }
+/**
+ * 閒家補牌規則
+ *
+ * Natural 8/9 不補牌
+ * 0~5 補牌
+ * 6~7 停牌
+ */
 
+export function playerMustDraw(hand) {
 
-        return hand.value <= 5;
-
-
+    if (hand.isNatural) {
+        return false;
     }
 
+    return hand.value <= 5;
 
+}
+    ├── bankerRule.js// src/engine/rules/bankerRule.js
 
-    /**
-     * 莊家是否補牌
-     *
-     * 第一階段
-     *
-     * 沒有閒家第三張時
-     */
-    static bankerDrawWithoutThird(
-        hand
-    ){
+import { bankerThirdCardRule } from "./thirdCardRule.js";
 
+/**
+ * 莊家補牌規則
+ */
 
-        if(this.isNatural(hand)){
+export function bankerMustDraw(
+    hand,
+    playerThirdCard = null
+) {
 
-            return false;
-
-        }
-
-
-        return hand.value <= 5;
-
-
+    if (hand.isNatural) {
+        return false;
     }
 
+    if (!playerThirdCard) {
+        return hand.value <= 5;
+    }
 
-
-    /**
-     * 莊家是否補第三張
-     *
-     * 完整規則
-     */
-    static bankerDraw(
-        hand,
+    return bankerThirdCardRule(
+        hand.value,
         playerThirdCard
-    ){
+    );
 
-    if(!playerThirdCard){
+}
+    ├── thirdCardRule.js// src/engine/rules/thirdCardRule.js
 
-            throw new Error(
-                "Player third card required"
-            );
+/**
+ * 莊家第三張補牌表
+ */
 
+export function bankerThirdCardRule(
+    bankerValue,
+    playerThirdCard
+) {
+
+    if (!playerThirdCard) {
+        throw new Error("Player third card required");
     }
 
+    const rank = playerThirdCard.rank;
 
-        const value = hand.value;
+    if (bankerValue <= 2) {
+        return true;
+    }
 
+    if (bankerValue === 3) {
+        return rank !== "8";
+    }
 
-        if(value <= 2){
+    if (bankerValue === 4) {
+        return [
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7"
+        ].includes(rank);
+    }
 
-            return true;
-
-        }
-
-
-        if(value === 3){
-
-            return (
-                playerThirdCard.rank !== "8"
-            );
-
-        }
-
-
-        if(value === 4){
-
-            return [
-                "2",
-                "3",
-                "4",
-                "5",
-                "6",
-                "7"
-            ].includes(
-                playerThirdCard.rank
-            );
-
-        }
-
-
-
-    if(value === 5){
-
+    if (bankerValue === 5) {
         return [
             "4",
             "5",
             "6",
             "7"
-        ].includes(
-            playerThirdCard.rank
-        );
-
+        ].includes(rank);
     }
 
-
-    if(value === 6){
-
+    if (bankerValue === 6) {
         return [
             "6",
             "7"
-        ].includes(
-            playerThirdCard.rank
-        );
-
+        ].includes(rank);
     }
-
 
     return false;
 
 }
+│   ├── round.js
+ * Baccarat Analyzer
+ *
+ * Baccarat Rules
+ */
+
+import Hand from "./hand.js";
+import { drawTo } from "./draw.js";
+import { playerMustDraw } from "./rules/playerRule.js";
+import { bankerMustDraw } from "./rules/bankerRule.js";
 
 
+export function playRound(shoe){
 
-    /**
-     * 勝負比較
-     */
-    static compare(
-        playerHand,
-        bankerHand
-    ){
+    const player = new Hand();
+    const banker = new Hand();
 
 
-        const player =
-            playerHand.value;
+    drawTo(player, shoe);
+    drawTo(banker, shoe);
+
+    drawTo(player, shoe);
+    drawTo(banker, shoe);
 
 
-        const banker =
-            bankerHand.value;
+    if(player.isNatural || banker.isNatural){
 
-
-
-        if(player > banker){
-
-            return "PLAYER";
-
-        }
-
-
-        if(banker > player){
-
-            return "BANKER";
-
-        }
-
-
-        return "TIE";
-
+        return {
+            player,
+            banker
+        };
 
     }
 
 
+    if(playerMustDraw(player)){
+
+        drawTo(player, shoe);
+
+    }
+
+
+    const playerThird =
+        player.count === 3
+        ?
+        player.lastCard
+        :
+        null;
+
+
+
+    if(
+        bankerMustDraw(
+            banker,
+            playerThird
+        )
+    ){
+
+        drawTo(banker, shoe);
+
+    }
+
+
+    return {
+
+        player,
+        banker
+
+    };
+
 }
-│   ├── simulator.js
+
+
+    // 閒家補牌
+
+    if(
+        BaccaratRules.playerDraw(player)
+    ){
+
+        drawTo(
+            player,
+            shoe
+        );
+
+    }
+    // 莊家補牌
+
+    if(
+        playerThird
+        &&
+        BaccaratRules.bankerDraw(
+            banker,
+            playerThird
+        )
+    ){
+
+        drawTo(
+            banker,
+            shoe
+        );
+
+    }
+    else if(
+        !playerThird
+        &&
+        BaccaratRules.bankerDrawWithoutThird(
+            banker
+        )
+    ){
+
+        drawTo(
+            banker,
+            shoe
+        );
+
+    }
+
+
+
+    return {
+
+        player,
+
+        banker,
+
+        winner:
+            BaccaratRules.compare(
+                player,
+                banker
+            )
+
+    };
+
+}
+│   ├── round.js
+│   ├── roundResult.js
+│   ├── baccaratGame.js
 │   ├── validator.js
 │   ├── score.js
-│   ├── thirdCardRule.js
-│   ├── roundResult.js
+│   ├── validator.js
+│   ├── score.js
 │   └── shoeStatistics.js
 │
 ├── analysis/
 │
+│   ├── simulator.js
 │   ├── analyzer.js
 │   ├── probability.js
 │   ├── exact.js
