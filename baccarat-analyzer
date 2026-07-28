@@ -1,6 +1,31 @@
 baccarat-analyzer/
 │
 ├── index.html
+├── test.js
+import BaccaratGame from "./src/engine/baccaratGame.js";
+
+
+const game = new BaccaratGame();
+
+
+console.log("遊戲建立完成");
+
+
+game.start();
+
+
+console.log("燒牌完成");
+
+
+const result = game.play();
+
+
+console.log("本局結果:");
+console.log(result);
+
+
+console.log("勝方:");
+console.log(result.winner);
 ├── manifest.json
 ├── service-worker.js
 ├── README.md
@@ -1547,6 +1572,7 @@ export function bankerThirdCardRule(
  */
 
 import Hand from "./hand.js";
+import RoundResult from "./roundResult.js";
 import { drawTo } from "./draw.js";
 import { playerMustDraw } from "./rules/playerRule.js";
 import { bankerMustDraw } from "./rules/bankerRule.js";
@@ -1567,10 +1593,10 @@ export function playRound(shoe){
 
     if(player.isNatural || banker.isNatural){
 
-        return {
+        return new RoundResult(
             player,
             banker
-        };
+        );
 
     }
 
@@ -1603,82 +1629,367 @@ export function playRound(shoe){
     }
 
 
-    return {
-
+    return new RoundResult(
         player,
         banker
+    );
 
-    };
+}    
+│   ├── roundResult.js// src/engine/roundResult.js
+
+export default class RoundResult {
+
+    constructor(player, banker) {
+
+        this.player = player;
+        this.banker = banker;
+
+        Object.freeze(this);
+    }
+
+    /**
+     * 閒家點數
+     */
+    get playerScore() {
+        return this.player.value;
+    }
+
+    /**
+     * 莊家點數
+     */
+    get bankerScore() {
+        return this.banker.value;
+    }
+
+    /**
+     * 勝方
+     */
+    get winner() {
+
+        if (this.playerScore > this.bankerScore) {
+            return "Player";
+        }
+
+        if (this.bankerScore > this.playerScore) {
+            return "Banker";
+        }
+
+        return "Tie";
+    }
+
+    /**
+     * 閒對
+     */
+    get playerPair() {
+        return this.player.isPair;
+    }
+
+    /**
+     * 莊對
+     */
+    get bankerPair() {
+        return this.banker.isPair;
+    }
+
+    /**
+     * 閒天牌
+     */
+    get playerNatural() {
+        return this.player.isNatural;
+    }
+
+    /**
+     * 莊天牌
+     */
+    get bankerNatural() {
+        return this.banker.isNatural;
+    }
+
+    /**
+     * Super 6
+     *
+     * 莊贏6點
+     */
+    get super6() {
+
+        return (
+            this.winner === "Banker" &&
+            this.bankerScore === 6
+        );
+
+    }
+
+    /**
+     * 勝差
+     */
+    get margin() {
+
+        return Math.abs(
+            this.playerScore -
+            this.bankerScore
+        );
+
+    }
+
+    toJSON() {
+
+        return {
+
+            winner: this.winner,
+
+            playerScore: this.playerScore,
+
+            bankerScore: this.bankerScore,
+
+            playerPair: this.playerPair,
+
+            bankerPair: this.bankerPair,
+
+            playerNatural: this.playerNatural,
+
+            bankerNatural: this.bankerNatural,
+
+            super6: this.super6,
+
+            margin: this.margin
+
+        };
+
+    }
 
 }
+│   ├── baccaratGame.js/**
+ * Baccarat Analyzer
+ * -----------------------------------------
+ *
+ * Baccarat Game Controller
+ *
+ * 控制：
+ * - Shoe
+ * - Burn
+ * - Round
+ * - History
+ */
 
 
-    // 閒家補牌
+import Shoe from "./shoe.js";
+import Burn from "./burn.js";
+import { playRound } from "./round.js";
 
-    if(
-        BaccaratRules.playerDraw(player)
-    ){
 
-        drawTo(
-            player,
-            shoe
+export default class BaccaratGame {
+
+
+    constructor(deckCount = 8){
+
+
+        this.shoe = new Shoe(
+            deckCount
         );
 
-    }
-    // 莊家補牌
 
-    if(
-        playerThird
-        &&
-        BaccaratRules.bankerDraw(
-            banker,
-            playerThird
-        )
-    ){
-
-        drawTo(
-            banker,
-            shoe
+        this.burn = new Burn(
+            this.shoe
         );
 
-    }
-    else if(
-        !playerThird
-        &&
-        BaccaratRules.bankerDrawWithoutThird(
-            banker
-        )
-    ){
 
-        drawTo(
-            banker,
-            shoe
-        );
+        this.history = [];
+
+
+        this.started = false;
+
 
     }
 
 
 
-    return {
+    /**
+     * 開始新牌靴
+     *
+     * 執行燒牌
+     */
+    start(){
 
-        player,
 
-        banker,
+        if(this.started){
 
-        winner:
-            BaccaratRules.compare(
-                player,
-                banker
-            )
+            throw new Error(
+                "Game already started"
+            );
 
-    };
+        }
+
+
+        this.burn.execute();
+
+
+        this.started = true;
+
+
+        return this;
+
+
+    }
+
+
+
+    /**
+     * 是否開始
+     */
+    get isStarted(){
+
+        return this.started;
+
+    }
+
+
+
+    /**
+     * 進行一局
+     */
+    play(){
+
+
+        if(!this.started){
+
+            throw new Error(
+                "Game not started"
+            );
+
+        }
+
+
+        const result =
+            playRound(
+                this.shoe
+            );
+
+
+        this.history.push(
+            result
+        );
+
+
+        return result;
+
+
+    }
+
+
+
+    /**
+     * 已玩局數
+     */
+    get rounds(){
+
+
+        return this.history.length;
+
+
+    }
+
+
+
+    /**
+     * 最近一局
+     */
+    get lastResult(){
+
+
+        return (
+            this.history[
+                this.history.length - 1
+            ]
+            ||
+            null
+        );
+
+    }
+
+
+
+    /**
+     * 剩餘牌數
+     */
+    get remainingCards(){
+
+
+        return this.shoe.remaining;
+
+
+    }
+
+
+
+    /**
+     * 已使用牌
+     */
+    get usedCards(){
+
+
+        return this.shoe.used;
+
+
+    }
+
+
+
+    /**
+     * 重新開靴
+     */
+    reset(){
+
+
+        this.shoe.reset();
+
+
+        this.burn =
+            new Burn(
+                this.shoe
+            );
+
+
+        this.history = [];
+
+
+        this.started = false;
+
+
+        return this;
+
+
+    }
+
+
+
+    /**
+     * JSON
+     */
+    toJSON(){
+
+
+        return {
+
+            shoe:
+                this.shoe.toJSON(),
+
+
+            history:
+                this.history.map(
+                    item => item.toJSON()
+                ),
+
+
+            started:
+                this.started
+
+        };
+
+
+    }
+
 
 }
-│   ├── round.js
-│   ├── roundResult.js
-│   ├── baccaratGame.js
-│   ├── validator.js
-│   ├── score.js
 │   ├── validator.js
 │   ├── score.js
 │   └── shoeStatistics.js
